@@ -7,15 +7,38 @@ public enum FlipMode
     RightToLeft,
     LeftToRight
 }
+static class TransformExtensions {
+    public static void Reset(this Transform t)
+    {
+        t.localScale = Vector3.one;
+        t.localPosition = Vector3.zero;
+        t.localRotation = Quaternion.identity;
+        var rectTrans = t.GetComponent<RectTransform>();
+        if(rectTrans!=null)
+        {
+            rectTrans.anchoredPosition = Vector2.zero;
+        }
+    }
+}
+
+
 [ExecuteInEditMode]
 public class Book : MonoBehaviour {
     public Canvas canvas;
     [SerializeField]
     RectTransform BookPanel;
-    public Sprite background;
-    public Sprite[] bookPages;
+    public GameObject PageStartItem;
+    public GameObject PageEndItem;
+    GameObject foreground;
+    GameObject background;
+    public GameObject[] bookPagesPrefabs;
+    GameObject[] bookPages;
+    public GameObject PageCache;
     public bool interactable=true;
     public bool enableShadowEffect=true;
+    System.Func<int , GameObject> mGetPageItemByIndex;
+    System.Func<int , string> mGetPaperNameByIndex;
+    
     //represent the index of the sprite shown in the right page
     public int currentPage = 0;
     public int TotalPageCount
@@ -46,6 +69,7 @@ public class Book : MonoBehaviour {
     public Image Right;
     public Image RightNext;
     public UnityEvent OnFlip;
+    public UnityEvent onGetPageItemByIndex;
     float radius1, radius2;
     //Spine Bottom
     Vector3 sb;
@@ -63,8 +87,65 @@ public class Book : MonoBehaviour {
     //current flip mode
     FlipMode mode;
 
+    public void Init(int pageCount, System.Func<int , GameObject> getPageItemByIndex , System.Func<int , string> getPaperNameByIndex)
+    {
+        PageCache.gameObject.SetActive(false);
+        mGetPageItemByIndex = getPageItemByIndex;
+        mGetPaperNameByIndex = getPaperNameByIndex;
+    }
+
+    public GameObject NewPageItem(string itemPrefabName)
+    {
+        //ItemPool pool = null;
+        //if(mItemPoolDict.TryGetValue(itemPrefabName , out pool) == false)
+        //{
+        //    return null;
+        //}
+        //LoopListViewItem2 item = pool.GetItem();
+        //RectTransform rf = item.GetComponent<RectTransform>();
+        //rf.SetParent(mContainerTrans);
+        //rf.localScale = Vector3.one;
+        //rf.anchoredPosition3D = Vector3.zero;
+        //rf.localEulerAngles = Vector3.zero;
+        //item.ParentListView = this;
+        //return item;
+        return null;
+    }
+
+    GameObject GetNewPageByIndex(int index)
+    {
+        //string paperName = string.Empty;
+        //if(mGetPaperNameByIndex!=null)
+        //{
+        //    paperName = mGetPaperNameByIndex(index);
+        //}
+        //GameObject page = mGetPageItemByIndex(index);
+        //if(page == null)
+        //{
+        //    //page = Instantiate<GameObject>();
+        //}
+        //return page;
+
+        return bookPages[index];
+    }
     void Start()
     {
+        foreground = GameObject.Instantiate<GameObject>(PageStartItem.gameObject , transform);
+        background = GameObject.Instantiate<GameObject>(PageEndItem.gameObject , transform);
+        foreground.transform.SetParent(PageCache.transform);
+        background.transform.SetParent(PageCache.transform);
+        if(bookPagesPrefabs.Length > 0)
+        {
+            bookPages = new GameObject[bookPagesPrefabs.Length];
+            for(int i = 0; i < bookPagesPrefabs.Length; i++)
+            {
+                GameObject pageItem = Instantiate(bookPagesPrefabs[i]);
+                pageItem.transform.SetParent(PageCache.transform);
+                pageItem.transform.Reset();
+                bookPages[i] = pageItem;
+            }
+        }
+        
         float scaleFactor = 1;
         if (canvas) scaleFactor = canvas.scaleFactor;
         float pageWidth = (BookPanel.rect.width* scaleFactor - 1) / 2;
@@ -88,7 +169,10 @@ public class Book : MonoBehaviour {
         Shadow.rectTransform.sizeDelta = new Vector2(scaledPageWidth, scaledPageHeight + scaledPageWidth * 0.6f);
         ShadowLTR.rectTransform.sizeDelta = new Vector2(scaledPageWidth, scaledPageHeight + scaledPageWidth * 0.6f);
         NextPageClip.rectTransform.sizeDelta = new Vector2(scaledPageWidth, scaledPageHeight + scaledPageWidth * 0.6f);
+
+      
     }
+    
     public Vector3 transformPoint(Vector3 global)
     {
         Vector2 localPos = BookPanel.InverseTransformPoint(global);
@@ -117,8 +201,8 @@ public class Book : MonoBehaviour {
         mode = FlipMode.LeftToRight;
         f = followLocation;
         ShadowLTR.transform.SetParent(ClippingPlane.transform, true);
-        ShadowLTR.transform.localPosition = new Vector3(0, 0, 0);
-        ShadowLTR.transform.localEulerAngles = new Vector3(0, 0, 0);
+        ShadowLTR.transform.localPosition = Vector3.zero;
+        ShadowLTR.transform.localEulerAngles = Vector3.zero;
         Left.transform.SetParent(ClippingPlane.transform, true);
 
         Right.transform.SetParent(BookPanel.transform, true);
@@ -152,8 +236,8 @@ public class Book : MonoBehaviour {
         mode = FlipMode.RightToLeft;
         f = followLocation;
         Shadow.transform.SetParent(ClippingPlane.transform, true);
-        Shadow.transform.localPosition = new Vector3(0, 0, 0);
-        Shadow.transform.localEulerAngles = new Vector3(0, 0, 0);
+        Shadow.transform.localPosition = Vector3.zero;
+        Shadow.transform.localEulerAngles = Vector3.zero;
         Right.transform.SetParent(ClippingPlane.transform, true);
         
         Left.transform.SetParent(BookPanel.transform, true);
@@ -244,19 +328,47 @@ public class Book : MonoBehaviour {
         ClippingPlane.rectTransform.pivot = new Vector2(1, 0.35f);
 
         Left.gameObject.SetActive(true);
-        Left.rectTransform.pivot = new Vector2(0, 0);
+        Left.rectTransform.pivot = Vector2.zero;
         Left.transform.position = RightNext.transform.position;
-        Left.transform.eulerAngles = new Vector3(0, 0, 0);
-        Left.sprite = (currentPage < bookPages.Length) ? bookPages[currentPage] : background;
+        Left.transform.eulerAngles = Vector3.zero;
+        //Left.sprite = (currentPage < bookPages.Length) ? bookPages[currentPage] : background;
+        if(currentPage < bookPages.Length)
+        {
+            bookPages[currentPage].gameObject.transform.SetParent(Left.transform);
+            bookPages[currentPage].gameObject.transform.Reset();
+        }
+        else
+        {
+            foreground.transform.SetParent(Left.transform);
+            foreground.transform.Reset();
+        }
         Left.transform.SetAsFirstSibling();
         
         Right.gameObject.SetActive(true);
         Right.transform.position = RightNext.transform.position;
-        Right.transform.eulerAngles = new Vector3(0, 0, 0);
-        Right.sprite = (currentPage < bookPages.Length - 1) ? bookPages[currentPage + 1] : background;
-
-        RightNext.sprite = (currentPage < bookPages.Length - 2) ? bookPages[currentPage + 2] : background;
-
+        Right.transform.eulerAngles = Vector3.zero;
+        //Right.sprite = (currentPage < bookPages.Length - 1) ? bookPages[currentPage + 1] : background;
+        if(currentPage < bookPages.Length - 1)
+        {
+            bookPages[currentPage + 1].gameObject.transform.SetParent(Right.transform);
+            bookPages[currentPage + 1].gameObject.transform.Reset();
+        }
+        else
+        {
+            background.transform.SetParent(Right.transform);
+            background.transform.Reset();
+        }
+        //RightNext.sprite = (currentPage < bookPages.Length - 2) ? bookPages[currentPage + 2] : background;
+        if(currentPage < bookPages.Length - 2)
+        {
+            bookPages[currentPage + 2].gameObject.transform.SetParent(RightNext.transform);
+            bookPages[currentPage + 2].gameObject.transform.Reset();
+        }
+        else
+        {
+            background.transform.SetParent(RightNext.transform);
+            background.transform.Reset();
+        }
         LeftNext.transform.SetAsFirstSibling();
         if (enableShadowEffect) Shadow.gameObject.SetActive(true);
         UpdateBookRTLToPoint(f);
@@ -279,18 +391,38 @@ public class Book : MonoBehaviour {
 
         Right.gameObject.SetActive(true);
         Right.transform.position = LeftNext.transform.position;
-        Right.sprite = bookPages[currentPage - 1];
-        Right.transform.eulerAngles = new Vector3(0, 0, 0);
+        //Right.sprite = bookPages[currentPage - 1];
+        bookPages[currentPage - 1].transform.SetParent(Right.transform);
+        bookPages[currentPage - 1].transform.Reset();
+        Right.transform.eulerAngles = Vector3.zero;
         Right.transform.SetAsFirstSibling();
 
         Left.gameObject.SetActive(true);
         Left.rectTransform.pivot = new Vector2(1, 0);
         Left.transform.position = LeftNext.transform.position;
-        Left.transform.eulerAngles = new Vector3(0, 0, 0);
-        Left.sprite = (currentPage >= 2) ? bookPages[currentPage - 2] : background;
-
-        LeftNext.sprite = (currentPage >= 3) ? bookPages[currentPage - 3] : background;
-
+        Left.transform.eulerAngles = Vector3.zero;
+        //Left.sprite = (currentPage >= 2) ? bookPages[currentPage - 2] : background;
+        if(currentPage >= 2)
+        {
+            bookPages[currentPage - 2].gameObject.transform.SetParent(Left.transform);
+            bookPages[currentPage - 2].gameObject.transform.Reset();
+        }
+        else
+        {
+            foreground.transform.SetParent(Left.transform);
+            foreground.transform.Reset();
+        }
+        //LeftNext.sprite = (currentPage >= 3) ? bookPages[currentPage - 3] : background;
+        if(currentPage >= 3)
+        {
+            bookPages[currentPage - 3].gameObject.transform.SetParent(LeftNext.transform);
+            bookPages[currentPage - 3].gameObject.transform.Reset();
+        }
+        else
+        {
+            foreground.transform.SetParent(LeftNext.transform);
+            foreground.transform.Reset();
+        }
         RightNext.transform.SetAsFirstSibling();
         if (enableShadowEffect) ShadowLTR.gameObject.SetActive(true);
         UpdateBookLTRToPoint(f);
@@ -319,13 +451,37 @@ public class Book : MonoBehaviour {
                 TweenBack();
             else
                 TweenForward();
+
+            Debug.Log("currentPage = " + currentPage);
         }
     }
     Coroutine currentCoroutine;
     void UpdateSprites()
     {
-        LeftNext.sprite= (currentPage > 0 && currentPage <= bookPages.Length) ? bookPages[currentPage-1] : background;
-        RightNext.sprite=(currentPage>=0 &&currentPage<bookPages.Length) ? bookPages[currentPage] : background;
+        //LeftNext.sprite= (currentPage > 0 && currentPage <= bookPages.Length) ? bookPages[currentPage-1] : background;
+        if(currentPage > 0 && currentPage <= bookPages.Length)
+        {
+            var page = GetNewPageByIndex(currentPage - 1);
+            page.gameObject.transform.SetParent(LeftNext.transform);
+            page.transform.Reset();
+        }
+        else
+        {
+            foreground.transform.SetParent(LeftNext.transform);
+            foreground.transform.Reset();
+        }
+        //RightNext.sprite=(currentPage>=0 &&currentPage<bookPages.Length) ? bookPages[currentPage] : background;
+        if(currentPage >= 0 && currentPage < bookPages.Length)
+        {
+            var page = GetNewPageByIndex(currentPage);
+            page.gameObject.transform.SetParent(RightNext.transform);
+            page.gameObject.transform.Reset();
+        }
+        else
+        {
+            background.transform.SetParent(RightNext.transform);
+            background.transform.Reset();
+        }
     }
     public void TweenForward()
     {
@@ -402,5 +558,9 @@ public class Book : MonoBehaviour {
         }
         if (onFinish != null)
             onFinish();
+    }
+    private void OnDestroy()
+    {
+        StopAllCoroutines();
     }
 }
