@@ -22,7 +22,6 @@ static class TransformExtensions {
 }
 
 
-[ExecuteInEditMode]
 public class Book : MonoBehaviour {
     public Canvas canvas;
     [SerializeField]
@@ -36,9 +35,13 @@ public class Book : MonoBehaviour {
     public GameObject PageCache;
     public bool interactable=true;
     public bool enableShadowEffect=true;
+    public bool moveExpirePageToCache =true;
     System.Func<int , GameObject> mGetPageItemByIndex;
-    System.Func<int , string> mGetPaperNameByIndex;
-    
+
+    Vector3 touchStartPos = Vector3.zero;
+    Vector3 touchEndPos = Vector3.zero;
+    float touchStartTime = 0;
+    public float flipForwardSpeed = 500;
     //represent the index of the sprite shown in the right page
     public int currentPage = 0;
     public int TotalPageCount
@@ -84,14 +87,20 @@ public class Book : MonoBehaviour {
     //follow point 
     Vector3 f;
     bool pageDragging = false;
+    public bool PageDragging
+    {
+        get
+        {
+            return pageDragging;
+        }
+    }
     //current flip mode
     FlipMode mode;
 
-    public void Init(int pageCount, System.Func<int , GameObject> getPageItemByIndex , System.Func<int , string> getPaperNameByIndex)
+    public void Init(int pageCount, System.Func<int , GameObject> getPageItemByIndex)
     {
         PageCache.gameObject.SetActive(false);
         mGetPageItemByIndex = getPageItemByIndex;
-        mGetPaperNameByIndex = getPaperNameByIndex;
     }
 
     public GameObject NewPageItem(string itemPrefabName)
@@ -114,11 +123,6 @@ public class Book : MonoBehaviour {
 
     GameObject GetNewPageByIndex(int index)
     {
-        //string paperName = string.Empty;
-        //if(mGetPaperNameByIndex!=null)
-        //{
-        //    paperName = mGetPaperNameByIndex(index);
-        //}
         //GameObject page = mGetPageItemByIndex(index);
         //if(page == null)
         //{
@@ -169,9 +173,25 @@ public class Book : MonoBehaviour {
         Shadow.rectTransform.sizeDelta = new Vector2(scaledPageWidth, scaledPageHeight + scaledPageWidth * 0.6f);
         ShadowLTR.rectTransform.sizeDelta = new Vector2(scaledPageWidth, scaledPageHeight + scaledPageWidth * 0.6f);
         NextPageClip.rectTransform.sizeDelta = new Vector2(scaledPageWidth, scaledPageHeight + scaledPageWidth * 0.6f);
-
-      
     }
+    void MoveOldPageToCache(Transform t)
+    {
+        if(!moveExpirePageToCache )
+        {
+            return;
+        }
+        if(t!=null)
+        {
+            int childCnt = t.childCount;
+            for(int i = childCnt - 1; i >= 0; i--)
+            {
+                Transform child = t.GetChild(i);
+                child.SetParent(PageCache.transform);
+                child.transform.Reset();
+            }
+        }
+    }
+
     
     public Vector3 transformPoint(Vector3 global)
     {
@@ -316,6 +336,7 @@ public class Book : MonoBehaviour {
             c = r2;
         return c;
     }
+ 
     public void DragRightPageToPoint(Vector3 point)
     {
         if (currentPage >= bookPages.Length) return;
@@ -334,11 +355,13 @@ public class Book : MonoBehaviour {
         //Left.sprite = (currentPage < bookPages.Length) ? bookPages[currentPage] : background;
         if(currentPage < bookPages.Length)
         {
+            MoveOldPageToCache(Left.transform);
             bookPages[currentPage].gameObject.transform.SetParent(Left.transform);
             bookPages[currentPage].gameObject.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(Left.transform);
             foreground.transform.SetParent(Left.transform);
             foreground.transform.Reset();
         }
@@ -350,22 +373,26 @@ public class Book : MonoBehaviour {
         //Right.sprite = (currentPage < bookPages.Length - 1) ? bookPages[currentPage + 1] : background;
         if(currentPage < bookPages.Length - 1)
         {
+            MoveOldPageToCache(Right.transform);
             bookPages[currentPage + 1].gameObject.transform.SetParent(Right.transform);
             bookPages[currentPage + 1].gameObject.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(Right.transform);
             background.transform.SetParent(Right.transform);
             background.transform.Reset();
         }
         //RightNext.sprite = (currentPage < bookPages.Length - 2) ? bookPages[currentPage + 2] : background;
         if(currentPage < bookPages.Length - 2)
         {
+            MoveOldPageToCache(RightNext.transform);
             bookPages[currentPage + 2].gameObject.transform.SetParent(RightNext.transform);
             bookPages[currentPage + 2].gameObject.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(RightNext.transform);
             background.transform.SetParent(RightNext.transform);
             background.transform.Reset();
         }
@@ -375,9 +402,11 @@ public class Book : MonoBehaviour {
     }
     public void OnMouseDragRightPage()
     {
-        if (interactable)
-        DragRightPageToPoint(transformPoint(Input.mousePosition));
-        
+        if(interactable)
+        {
+            OnTouchStart();
+            DragRightPageToPoint(transformPoint(Input.mousePosition));
+        }
     }
     public void DragLeftPageToPoint(Vector3 point)
     {
@@ -404,22 +433,26 @@ public class Book : MonoBehaviour {
         //Left.sprite = (currentPage >= 2) ? bookPages[currentPage - 2] : background;
         if(currentPage >= 2)
         {
+            MoveOldPageToCache(Left.transform);
             bookPages[currentPage - 2].gameObject.transform.SetParent(Left.transform);
             bookPages[currentPage - 2].gameObject.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(Left.transform);
             foreground.transform.SetParent(Left.transform);
             foreground.transform.Reset();
         }
         //LeftNext.sprite = (currentPage >= 3) ? bookPages[currentPage - 3] : background;
         if(currentPage >= 3)
         {
+            MoveOldPageToCache(LeftNext.transform);
             bookPages[currentPage - 3].gameObject.transform.SetParent(LeftNext.transform);
             bookPages[currentPage - 3].gameObject.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(LeftNext.transform);
             foreground.transform.SetParent(LeftNext.transform);
             foreground.transform.Reset();
         }
@@ -429,30 +462,50 @@ public class Book : MonoBehaviour {
     }
     public void OnMouseDragLeftPage()
     {
-        if (interactable)
-        DragLeftPageToPoint(transformPoint(Input.mousePosition));
-        
+        if(interactable)
+        {
+            OnTouchStart();
+            DragLeftPageToPoint(transformPoint(Input.mousePosition));
+        }
     }
+    void OnTouchStart()
+    {
+        touchStartPos = Input.mousePosition;
+        touchStartTime = Time.time;
+    }
+
     public void OnMouseRelease()
     {
-        if (interactable)
+        if(interactable)
+        {
+            touchEndPos = Input.mousePosition;
             ReleasePage();
+        }
     }
     public void ReleasePage()
     {
         if (pageDragging)
         {
             pageDragging = false;
-            float distanceToLeft = Vector2.Distance(c, ebl);
-            float distanceToRight = Vector2.Distance(c, ebr);
-            if (distanceToRight < distanceToLeft && mode == FlipMode.RightToLeft)
-                TweenBack();
-            else if (distanceToRight > distanceToLeft && mode == FlipMode.LeftToRight)
-                TweenBack();
-            else
+            float distance = Vector3.Distance(touchStartPos , touchEndPos);
+            float diffTime = Time.time - touchStartTime;
+            float speed = distance / diffTime;
+            //Debug.Log("speed = " + speed);
+            if(speed > flipForwardSpeed)
+            {
                 TweenForward();
-
-            Debug.Log("currentPage = " + currentPage);
+            }
+            else
+            {
+                float distanceToLeft = Vector2.Distance(c , ebl);
+                float distanceToRight = Vector2.Distance(c , ebr);
+                if(distanceToRight < distanceToLeft && mode == FlipMode.RightToLeft)
+                    TweenBack();
+                else if(distanceToRight > distanceToLeft && mode == FlipMode.LeftToRight)
+                    TweenBack();
+                else
+                    TweenForward();
+            }
         }
     }
     Coroutine currentCoroutine;
@@ -461,24 +514,28 @@ public class Book : MonoBehaviour {
         //LeftNext.sprite= (currentPage > 0 && currentPage <= bookPages.Length) ? bookPages[currentPage-1] : background;
         if(currentPage > 0 && currentPage <= bookPages.Length)
         {
+            MoveOldPageToCache(LeftNext.transform);
             var page = GetNewPageByIndex(currentPage - 1);
             page.gameObject.transform.SetParent(LeftNext.transform);
             page.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(LeftNext.transform);
             foreground.transform.SetParent(LeftNext.transform);
             foreground.transform.Reset();
         }
         //RightNext.sprite=(currentPage>=0 &&currentPage<bookPages.Length) ? bookPages[currentPage] : background;
         if(currentPage >= 0 && currentPage < bookPages.Length)
         {
+            MoveOldPageToCache(RightNext.transform);
             var page = GetNewPageByIndex(currentPage);
             page.gameObject.transform.SetParent(RightNext.transform);
             page.gameObject.transform.Reset();
         }
         else
         {
+            MoveOldPageToCache(RightNext.transform);
             background.transform.SetParent(RightNext.transform);
             background.transform.Reset();
         }

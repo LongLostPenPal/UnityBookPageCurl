@@ -10,6 +10,7 @@ public class AutoFlip : MonoBehaviour {
     public Book ControledBook;
     public int AnimationFramesCount = 40;
     bool isFlipping = false;
+    bool keepBookInteractableStatus = false;
     // Use this for initialization
     void Start () {
         if (!ControledBook)
@@ -22,14 +23,20 @@ public class AutoFlip : MonoBehaviour {
     {
         isFlipping = false;
     }
+    bool IsFlipping()
+    {
+        return isFlipping || ControledBook.PageDragging;
+    }
 	public void StartFlipping()
     {
         StartCoroutine(FlipToEnd());
     }
     public void FlipRightPage()
     {
-        if (isFlipping) return;
+        if (IsFlipping()) return;
         if (ControledBook.currentPage >= ControledBook.TotalPageCount) return;
+        keepBookInteractableStatus = ControledBook.interactable;
+        ControledBook.interactable = false;
         isFlipping = true;
         float frameTime = PageFlipTime / AnimationFramesCount;
         float xc = (ControledBook.EndBottomRight.x + ControledBook.EndBottomLeft.x) / 2;
@@ -41,8 +48,10 @@ public class AutoFlip : MonoBehaviour {
     }
     public void FlipLeftPage()
     {
-        if (isFlipping) return;
+        if (IsFlipping()) return;
         if (ControledBook.currentPage <= 0) return;
+        keepBookInteractableStatus = ControledBook.interactable;
+        ControledBook.interactable = false;
         isFlipping = true;
         float frameTime = PageFlipTime / AnimationFramesCount;
         float xc = (ControledBook.EndBottomRight.x + ControledBook.EndBottomLeft.x) / 2;
@@ -107,6 +116,7 @@ public class AutoFlip : MonoBehaviour {
             x -= dx;
         }
         ControledBook.ReleasePage();
+        ControledBook.interactable = keepBookInteractableStatus;
     }
     IEnumerator FlipLTR(float xc, float xl, float h, float frameTime, float dx)
     {
@@ -121,5 +131,6 @@ public class AutoFlip : MonoBehaviour {
             x += dx;
         }
         ControledBook.ReleasePage();
+        ControledBook.interactable = keepBookInteractableStatus;
     }
 }
