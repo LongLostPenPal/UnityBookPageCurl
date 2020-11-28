@@ -17,7 +17,7 @@ public class Logic : MonoBehaviour
     void Start()
     {
         book = GetComponentInChildren<Book>();
-        Debug.Log(book.GetScaleFactor());
+        //book.Init(4 , book.GetScaleFactor() , getPageItemByIndex , b , c);
         book.Init(4 , 2.275f , getPageItemByIndex , b , c);
     }
 

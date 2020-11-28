@@ -27,12 +27,8 @@ public class Book : MonoBehaviour {
     Canvas canvas;
     [SerializeField]
     RectTransform BookPanel;
-    public GameObject PageStartItem;
-    public GameObject PageEndItem;
     public GameObject DefaultPageLItem;
     public GameObject DefaultPageRItem;
-    GameObject foreground;
-    GameObject background;
     public GameObject[] bookPagesPrefabs;
     public GameObject PageCache;
     public bool interactable = true;
@@ -47,7 +43,7 @@ public class Book : MonoBehaviour {
     float touchStartTime = 0;
     int pageCount = 0;
     public float flipForwardSpeed = 500;
-    //represent the index of the sprite shown in the right page
+    //represent the index of the sprite shown in the right page 0 2 4 6 ....
     public int currentPage = 0;
 
     public Image ClippingPlane;
@@ -118,6 +114,7 @@ public class Book : MonoBehaviour {
     static string flipLeftPage = "Left";
     static string flipRightPage = "Right";
 
+    /*
     public float GetScaleFactor()
     {
         var sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -125,6 +122,8 @@ public class Book : MonoBehaviour {
         sphere.transform.SetParent(this.transform , true);
         return sphere.transform.localScale.x;
     }
+    */
+
     /// <summary>
     /// 
     /// </summary>
@@ -134,17 +133,19 @@ public class Book : MonoBehaviour {
     /// <param name="onFlip"></param>
     public void Init(int pageCount , float scaleFactor , Func<int , GameObject> getPageItemByIndex , Action<string> onFlip , Action<string> onTouchPage)
     {
-        PageCache.gameObject.SetActive(false);
+        if(pageCount < 2)
+        {
+            return;
+        }
+        //取消C#侧设置起始页 用收个page作为起始页，坐标先后偏移一位
+        pageCount -= 2;
         this.pageCount = pageCount;
+        PageCache.gameObject.SetActive(false);
         mGetPageItemByIndex = getPageItemByIndex;
         this.OnFlip += onFlip;
-        this.OnTouchPage = onTouchPage;
+        this.OnTouchPage += onTouchPage;
 
         canvas = this.gameObject.GetComponentInParent<Canvas>();
-        foreground = GameObject.Instantiate<GameObject>(PageStartItem.gameObject , transform);
-        background = GameObject.Instantiate<GameObject>(PageEndItem.gameObject , transform);
-        foreground.transform.SetParent(PageCache.transform);
-        background.transform.SetParent(PageCache.transform);
 
         float pageWidth = (BookPanel.rect.width * scaleFactor) / 2;
         float pageHeight = BookPanel.rect.height * scaleFactor;
@@ -206,27 +207,21 @@ public class Book : MonoBehaviour {
         return null;
     }
 
-    GameObject GetNewPageByIndex(int index)
+    GameObject GetNewPageByIndex(int index , bool getMiddlePage = true)
     {
+        if(getMiddlePage)
+        {
+            //取消C#侧设置起始页 用收个page作为起始页，坐标先后偏移一位
+            index++;
+        }
         GameObject page = null;
         if(mGetPageItemByIndex != null)
         {
             page = mGetPageItemByIndex(index);
         }
-        if(page == null)
-        {
-            if(index % 2 == 0)
-            {
-                page = Instantiate<GameObject>(DefaultPageLItem);
-            }
-            else
-            {
-                page = Instantiate<GameObject>(DefaultPageRItem);
-            }
-            page.transform.Reset();
-        }
         return page;
     }
+
     void Start()
     {
         //Init(1 , 0.01041667f, null);
@@ -306,12 +301,14 @@ public class Book : MonoBehaviour {
         if(currentPage < TotalPageCount)
         {
             MoveOldPageToCache(Left.transform);
-            GetNewPageByIndex(currentPage).gameObject.transform.SetParent(Left.transform);
-            GetNewPageByIndex(currentPage).gameObject.transform.Reset();
+            var page = GetNewPageByIndex(currentPage);
+            page.gameObject.transform.SetParent(Left.transform);
+            page.gameObject.transform.Reset();
         }
         else
         {
             MoveOldPageToCache(Left.transform);
+            var foreground = GetNewPageByIndex(0 , false);
             foreground.transform.SetParent(Left.transform);
             foreground.transform.Reset();
         }
@@ -323,24 +320,28 @@ public class Book : MonoBehaviour {
         if(currentPage < TotalPageCount - 1)
         {
             MoveOldPageToCache(Right.transform);
-            GetNewPageByIndex(currentPage + 1).gameObject.transform.SetParent(Right.transform);
-            GetNewPageByIndex(currentPage + 1).gameObject.transform.Reset();
+            var page = GetNewPageByIndex(currentPage + 1);
+            page.gameObject.transform.SetParent(Right.transform);
+            page.gameObject.transform.Reset();
         }
         else
         {
             MoveOldPageToCache(Right.transform);
-            background.transform.SetParent(Right.transform);
-            background.transform.Reset();
+            var background = GetNewPageByIndex(TotalPageCount + 1 , false);
+            background.gameObject.transform.SetParent(Right.transform);
+            background.gameObject.transform.Reset();
         }
         if(currentPage < TotalPageCount - 2)
         {
             MoveOldPageToCache(RightNext.transform);
-            GetNewPageByIndex(currentPage + 2).gameObject.transform.SetParent(RightNext.transform);
-            GetNewPageByIndex(currentPage + 2).gameObject.transform.Reset();
+            var page = GetNewPageByIndex(currentPage + 2);
+            page.gameObject.transform.SetParent(RightNext.transform);
+            page.gameObject.transform.Reset();
         }
         else
         {
             MoveOldPageToCache(RightNext.transform);
+            var background = GetNewPageByIndex(TotalPageCount + 1 , false);
             background.transform.SetParent(RightNext.transform);
             background.transform.Reset();
         }
@@ -367,8 +368,9 @@ public class Book : MonoBehaviour {
 
         Right.gameObject.SetActive(true);
         Right.transform.position = LeftNext.transform.position;
-        GetNewPageByIndex(currentPage - 1).transform.SetParent(Right.transform);
-        GetNewPageByIndex(currentPage - 1).transform.Reset();
+        var page = GetNewPageByIndex(currentPage - 1);
+        page.transform.SetParent(Right.transform);
+        page.transform.Reset();
         Right.transform.eulerAngles = Vector3.zero;
         Right.transform.SetAsFirstSibling();
 
@@ -379,24 +381,28 @@ public class Book : MonoBehaviour {
         if(currentPage >= 2)
         {
             MoveOldPageToCache(Left.transform);
-            GetNewPageByIndex(currentPage - 2).gameObject.transform.SetParent(Left.transform);
-            GetNewPageByIndex(currentPage - 2).gameObject.transform.Reset();
+            var item = GetNewPageByIndex(currentPage - 2);
+            item.gameObject.transform.SetParent(Left.transform);
+            item.gameObject.transform.Reset();
         }
         else
         {
             MoveOldPageToCache(Left.transform);
+            var foreground = GetNewPageByIndex(0 , false);
             foreground.transform.SetParent(Left.transform);
             foreground.transform.Reset();
         }
         if(currentPage >= 3)
         {
             MoveOldPageToCache(LeftNext.transform);
-            GetNewPageByIndex(currentPage - 3).gameObject.transform.SetParent(LeftNext.transform);
-            GetNewPageByIndex(currentPage - 3).gameObject.transform.Reset();
+            var item = GetNewPageByIndex(currentPage - 3);
+            item.gameObject.transform.SetParent(LeftNext.transform);
+            item.gameObject.transform.Reset();
         }
         else
         {
             MoveOldPageToCache(LeftNext.transform);
+            var foreground = GetNewPageByIndex(0 , false);
             foreground.transform.SetParent(LeftNext.transform);
             foreground.transform.Reset();
         }
@@ -439,7 +445,6 @@ public class Book : MonoBehaviour {
     {
         if(pageDragging)
         {
-            Debug.Log("IS Flipping Over");
             pageDragging = false;
             float distance = Vector3.Distance(touchStartPos , touchEndPos);
             float diffTime = Time.time - touchStartTime;
@@ -462,6 +467,20 @@ public class Book : MonoBehaviour {
             }
         }
     }
+    public void UpdateToPage(int pageNum)
+    {
+        if(pageNum % 2 != 0)
+        {
+            return;
+        }
+        if(pageNum < 0 || pageNum > TotalPageCount)
+        {
+            return;
+        }
+        currentPage = pageNum;
+        UpdatePageItems();
+    }
+
     void UpdatePageItems()
     {
         if(currentPage > 0 && currentPage <= TotalPageCount)
@@ -474,6 +493,7 @@ public class Book : MonoBehaviour {
         else
         {
             MoveOldPageToCache(LeftNext.transform);
+            var foreground = GetNewPageByIndex(0 , false);
             foreground.transform.SetParent(LeftNext.transform);
             foreground.transform.Reset();
         }
@@ -487,6 +507,7 @@ public class Book : MonoBehaviour {
         else
         {
             MoveOldPageToCache(RightNext.transform);
+            var background = GetNewPageByIndex(TotalPageCount + 1 , false);
             background.transform.SetParent(RightNext.transform);
             background.transform.Reset();
         }
