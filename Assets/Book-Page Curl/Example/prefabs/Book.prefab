@@ -815,11 +815,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4446b7192d8bf914ebaf797b64fe8b86, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  canvas: {fileID: 0}
   BookPanel: {fileID: 1522405056359337439}
   PageStartItem: {fileID: 5303207996954806565, guid: 8254108ab11637b4494669a22b503e26,
     type: 3}
   PageEndItem: {fileID: 5303207996954806565, guid: d088c064ef50f7d4aa5e43261b793ab5,
+    type: 3}
+  DefaultPageLItem: {fileID: 4275835268465558628, guid: 5f3edb6e067f6a74f91a44a8dc22c30e,
+    type: 3}
+  DefaultPageRItem: {fileID: 4275835268465558628, guid: 5f3edb6e067f6a74f91a44a8dc22c30e,
     type: 3}
   bookPagesPrefabs:
   - {fileID: 4275835268465558628, guid: eb808b8eb7efd5d4b96f3d9f231945ef, type: 3}
@@ -840,9 +843,6 @@ MonoBehaviour:
   LeftNext: {fileID: 1522405056374542531}
   Right: {fileID: 1522405056374533621}
   RightNext: {fileID: 1522405056374569571}
-  OnFlip:
-    m_PersistentCalls:
-      m_Calls: []
   onGetPageItemByIndex:
     m_PersistentCalls:
       m_Calls: []
