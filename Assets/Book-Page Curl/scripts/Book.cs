@@ -45,7 +45,7 @@ public class Book : MonoBehaviour {
     public float flipForwardSpeed = 500;
     //represent the index of the sprite shown in the right page 0 2 4 6 ....
     public int currentPage = 0;
-
+   
     public Image ClippingPlane;
     public Image NextPageClip;
     public Image Shadow;
@@ -131,9 +131,9 @@ public class Book : MonoBehaviour {
     /// <param name="scaleFactor">Equals LocalScale Vector3.one To WordScale ex:GetScaleFactor()</param>
     /// <param name="getPageItemByIndex"></param>
     /// <param name="onFlip"></param>
-    public void Init(int pageCount , float scaleFactor , Func<int , GameObject> getPageItemByIndex , Action<string> onFlip , Action<string> onTouchPage)
+    public void Init(int pageCount ,float scaleFactor, Func<int , GameObject> getPageItemByIndex, Action<string> onFlip , Action<string> onTouchPage)
     {
-        if(pageCount < 2)
+        if(pageCount<2)
         {
             return;
         }
@@ -177,17 +177,17 @@ public class Book : MonoBehaviour {
         //}
     }
 
-    GameObject GetFinalPrefab(GameObject go , bool instantiate)
+    GameObject GetFinalPrefab(GameObject go, bool instantiate)
     {
         if(instantiate)
         {
-            var item = Instantiate<GameObject>(go , this.transform);
+            var item = Instantiate<GameObject>(go,this.transform);
             item.transform.Reset();
             return item;
         }
         return go;
     }
-    public GameObject GetPageItemPrefab(string itemPrefabName , bool instantiate = false)
+    public GameObject GetPageItemPrefab(string itemPrefabName, bool instantiate = false)
     {
         for(int i = 0; i < bookPagesPrefabs.Length; i++)
         {
@@ -201,13 +201,13 @@ public class Book : MonoBehaviour {
             return GetFinalPrefab(DefaultPageLItem , instantiate);
         }
         else if(itemPrefabName.Equals(DefaultPageRItem.name))
-        {
+        { 
             return GetFinalPrefab(DefaultPageRItem , instantiate);
         }
         return null;
     }
 
-    GameObject GetNewPageByIndex(int index , bool getMiddlePage = true)
+    GameObject GetNewPageByIndex(int index,bool getMiddlePage=true)
     {
         if(getMiddlePage)
         {
@@ -221,7 +221,7 @@ public class Book : MonoBehaviour {
         }
         return page;
     }
-
+    
     void Start()
     {
         //Init(1 , 0.01041667f, null);
@@ -252,7 +252,7 @@ public class Book : MonoBehaviour {
     }
     public Vector3 transformInputPoint(Vector3 pos)
     {
-        if(canvas != null && (canvas.rootCanvas.renderMode == RenderMode.ScreenSpaceCamera))
+        if(canvas!=null && (canvas.rootCanvas.renderMode == RenderMode.ScreenSpaceCamera))
         {
             Vector3 worldPos = Camera.main.ScreenToWorldPoint(pos);//屏幕坐标转换世界坐标
             Vector2 localPos = BookPanel.InverseTransformPoint(worldPos);//世界坐标转换位本地坐标
@@ -327,7 +327,7 @@ public class Book : MonoBehaviour {
         else
         {
             MoveOldPageToCache(Right.transform);
-            var background = GetNewPageByIndex(TotalPageCount + 1 , false);
+            var background = GetNewPageByIndex(TotalPageCount+1, false);
             background.gameObject.transform.SetParent(Right.transform);
             background.gameObject.transform.Reset();
         }
@@ -341,7 +341,7 @@ public class Book : MonoBehaviour {
         else
         {
             MoveOldPageToCache(RightNext.transform);
-            var background = GetNewPageByIndex(TotalPageCount + 1 , false);
+            var background = GetNewPageByIndex(TotalPageCount+1, false);
             background.transform.SetParent(RightNext.transform);
             background.transform.Reset();
         }
@@ -366,6 +366,7 @@ public class Book : MonoBehaviour {
         NextPageClip.rectTransform.pivot = nextPageClipPivot1;
         ClippingPlane.rectTransform.pivot = clippingPlanePivot0;
 
+        MoveOldPageToCache(Right.transform);
         Right.gameObject.SetActive(true);
         Right.transform.position = LeftNext.transform.position;
         var page = GetNewPageByIndex(currentPage - 1);
@@ -507,7 +508,7 @@ public class Book : MonoBehaviour {
         else
         {
             MoveOldPageToCache(RightNext.transform);
-            var background = GetNewPageByIndex(TotalPageCount + 1 , false);
+            var background = GetNewPageByIndex(TotalPageCount+1, false);
             background.transform.SetParent(RightNext.transform);
             background.transform.Reset();
         }
@@ -725,8 +726,7 @@ public class Book : MonoBehaviour {
     }
 
     bool debug = false;
-    void DebugPoint(Vector3 pos)
-    {
+    void DebugPoint(Vector3 pos) {
         GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         sphere.transform.SetParent(this.transform);
         sphere.transform.Reset();
